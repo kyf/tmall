@@ -40,17 +40,31 @@ async function main(){
 
 }
 
+async function fetchDetailImgs(matches){
+	if(matches.length == 0)return [];
+	let uri = matches[0];
+	let body = await rp.get('https:' + uri);
+	let reg = new RegExp('https://img.alicdn.com[^"]+', 'ig');
+	let _matches = body.match(reg);
+	if(!_matches || _matches == null)return [];
+	return _matches;
+}
+
+let g_index = 0;
 
 async function saveDetail(href){
+	g_index++;
+	if(g_index != 30)return;
     let page = await initPage();
     let status = await page.open(`https://${href}`);    
     let body = await page.property('content');
-    await sleep(20);
+    await sleep(30);
 
-    body = await page.property('content');
+	let reg = new RegExp('\/\/desc.alicdn.com[^"]+', 'ig');
+	let matches = body.match(reg);
     let $ = cheerio.load(body);
     let bigImgs = $('#J_UlThumb img');
-    let detailImgs = $('.img-ks-lazyload');
+    let detailImgs = await fetchDetailImgs(matches);
     let nameList = $('#J_AttrUL li');
 
     let name = filterName(nameList);
@@ -64,7 +78,8 @@ async function saveDetail(href){
     fs.existsSync(`./data/${name}/detail`) || fs.mkdirSync(`./data/${name}/detail`);
 
     bigImgs = filterBigImgs(bigImgs);
-    detailImgs = filterDetailImgs(detailImgs);
+    //detailImgs = filterDetailImgs(detailImgs);
+	console.log(`[${g_index}]big images length is ${bigImgs.length}, detail images length is ${detailImgs.length} ...`);
 
     fs.writeFileSync(`./data/${name}/big/list.txt`, JSON.stringify(bigImgs));
     fs.writeFileSync(`./data/${name}/detail/list.txt`, JSON.stringify(detailImgs));

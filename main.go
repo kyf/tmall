@@ -7,6 +7,7 @@ import (
 	. "log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -24,7 +25,7 @@ func main() {
 				Print(err.Error())
 				continue
 			}
-			Print(string(body))
+			//Print(string(body))
 			var list []string
 			err = json.Unmarshal(body, &list)
 			if err != nil {
@@ -38,7 +39,11 @@ func main() {
 
 func saveImg(imgs []string, dir string) {
 	for index, img := range imgs {
-		resp, err := http.Get("https:" + img)
+		uri := img
+		if !strings.HasPrefix(img, "https:") {
+			uri = "https:" + img
+		}
+		resp, err := http.Get(uri)
 		if err != nil {
 			Print(err.Error)
 			continue
