@@ -8,6 +8,7 @@ yarn-error.log*
 tmall
 ./data/*
 package-lock.json
+kk/*
 
 # Runtime data
 pids

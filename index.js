@@ -2,6 +2,7 @@ const rp = require('request-promise-native');
 const phantom = require('phantom');
 const cheerio = require('cheerio');
 const fs = require('fs');
+const Excel = require('exceljs');
 
 const ids = [
     'shop18745057617', 
@@ -52,49 +53,47 @@ async function fetchDetailImgs(matches){
 
 let g_index = 0;
 
+let g_data = [];
+
 async function saveDetail(href){
 	g_index++;
-	if(g_index != 30)return;
+	//if(g_index != 4)return;
     let page = await initPage();
     let status = await page.open(`https://${href}`);    
     let body = await page.property('content');
-    await sleep(30);
+    await sleep(1);
 
 	let reg = new RegExp('\/\/desc.alicdn.com[^"]+', 'ig');
 	let matches = body.match(reg);
     let $ = cheerio.load(body);
     let bigImgs = $('#J_UlThumb img');
+    let title = $('.tb-detail-hd h1').eq(0).text().trim();
     let detailImgs = await fetchDetailImgs(matches);
     let nameList = $('#J_AttrUL li');
 
+    let price = filterPrice(nameList);
     let name = filterName(nameList);
     if(name == ''){
         console.log(`${href} not name ...`);
         return;
     }
 
+    let item = {"number": name, "name": title, "price": price};
+    fs.writeFileSync(`./kk/${name}.json`, JSON.stringify(item));
+    
+	console.log(`[${g_index}] ${JSON.stringify(item)} ${href}...`);
+    //return;
+
     fs.existsSync(`./data/${name}`) || fs.mkdirSync(`./data/${name}`);
     fs.existsSync(`./data/${name}/big`) || fs.mkdirSync(`./data/${name}/big`);
     fs.existsSync(`./data/${name}/detail`) || fs.mkdirSync(`./data/${name}/detail`);
 
     bigImgs = filterBigImgs(bigImgs);
-    //detailImgs = filterDetailImgs(detailImgs);
 	console.log(`[${g_index}]big images length is ${bigImgs.length}, detail images length is ${detailImgs.length} ...`);
 
     fs.writeFileSync(`./data/${name}/big/list.txt`, JSON.stringify(bigImgs));
     fs.writeFileSync(`./data/${name}/detail/list.txt`, JSON.stringify(detailImgs));
 
-    /*
-    bigImgs.forEach((img, index) => {
-        console.log(`[big]${img}`);
-        saveImg(img, `./data/${name}/big`, index);
-    });
-
-    detailImgs.forEach((img, index) => {
-        console.log(`[detail]${img}`);
-        saveImg(img, `./data/${name}/detail`, index);
-    });
-    */
 }
 
 async function saveImg(imgUri, dir, index){
@@ -131,6 +130,20 @@ function filterDetailImgs(list){
 
     return result;
 }
+
+function filterPrice(list){
+    let size = list.length;
+    for(let i = 0; i < size; i++){
+        let item = list.eq(i);
+        let text = item.text();
+        if(text.includes('吊牌价')){
+            return text.replace('吊牌价:', '').trim();
+        }
+    }
+
+    return "";
+}
+
 
 function filterName(list){
     let size = list.length;
