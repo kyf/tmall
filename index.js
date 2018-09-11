@@ -3,6 +3,7 @@ const phantom = require('phantom');
 const cheerio = require('cheerio');
 const fs = require('fs');
 const Excel = require('exceljs');
+const getPriceUri = require('./price_uri');
 
 const ids = [
     'shop18745057617', 
@@ -55,12 +56,16 @@ let g_index = 0;
 
 let g_data = [];
 
+let cookie = 'cna=jL63Er/uSEwCAXLxRThk/POO; cq=ccp%3D1; hng=CN%7Czh-CN%7CCNY%7C156; t=a732eeab9f4edbb1018ce8f41d7f0d36; tracknick=kyf1231; _tb_token_=ee8bee5e7db73; cookie2=13fbd8e666b69bd6d2    9d4e092bb29099; _m_h5_tk=a9311c8b9c8bcde033958d394896d3ef_1536668791887; _m_h5_tk_enc=f16587f999259d5eb3e18a446dcd0732; pnm_cku822=098%23E1hvEQvUvbpvUvCkvvvvvjiPPsdO0j3UPszpzjEUPmP9zjlRRszytjE8P2Fplj1HiQhvCv    vvpZpPvpvhvv2MMQhCvvOv9hCvvvvEvpCW9CfytC0DW3vOHkx%2F1RoK5d8rwZHl%2Bb8reEIaUWoQ%2Bu0OeB69zbmAdX9fjomUkC4AdX3gENLvHdoJVcaVzbvqrqpAOH2lYBpTHdaScOyCvvOCvhE20RoivpvUvvCCEmWHClAtvpvIvvCvpvvvvvvvvh8DvvmCtvvvBGwvvvU    wvvCj1Qvvv99vvhNjvvvmm2yCvvpvvhCv; isg=BL-_Soqs2GGDU928uNo2RPlQTpOJDBN17OYo5FGMB269YN_iWXVUl9FypnA7OOu-';
+
+
 async function saveDetail(href){
 	g_index++;
-	//if(g_index != 4)return;
-    let page = await initPage();
-    let status = await page.open(`https://${href}`);    
-    let body = await page.property('content');
+	if(g_index != 1)return;
+    //let page = await initPage();
+    //let status = await page.open(`https://${href}`);    
+    //let body = await page.property('content');
+    let body = await rp.get(`https:${href}`);
     await sleep(1);
 
 	let reg = new RegExp('\/\/desc.alicdn.com[^"]+', 'ig');
@@ -71,14 +76,37 @@ async function saveDetail(href){
     let detailImgs = await fetchDetailImgs(matches);
     let nameList = $('#J_AttrUL li');
 
-    let price = filterPrice(nameList);
+    //let price = filterPrice(nameList);
+    
+    let reg1 = new RegExp('//mdskip.taobao.com/core/initItemDetail.htm[^"]+', 'ig');
+    let priceuri = body.match(reg1);
+    if(priceuri == null){
+        console.log('priceuri is null');
+        return;
+    }
+    let newPriceUri = getPriceUri(cookie, priceuri[1]);
+    let priceBody = await rp({
+        method: 'get',
+        uri: 'https:' + newPriceUri,
+        headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36",
+            "Referer": `https:${href}`,
+            "cookie": cookie,
+        },
+    });
+
+    console.log(priceBody);return;
+
+    let price1 = $('#J_StrPriceModBox .tm-price').text().trim();
+    let price2 = $('#J_PromoPrice .tm-price').text().trim();
+    
     let name = filterName(nameList);
     if(name == ''){
         console.log(`${href} not name ...`);
         return;
     }
 
-    let item = {"number": name, "name": title, "price": price};
+    let item = {"number": name, "name": title, "price1": price1, "price2": price2};
     fs.writeFileSync(`./kk/${name}.json`, JSON.stringify(item));
     
 	console.log(`[${g_index}] ${JSON.stringify(item)} ${href}...`);
