@@ -4,6 +4,7 @@ const cheerio = require('cheerio');
 const fs = require('fs');
 const Excel = require('exceljs');
 const getPriceUri = require('./price_uri');
+const iconv = require('iconv-lite');
 
 const ids = [
     'shop18745057617', 
@@ -66,6 +67,7 @@ async function saveDetail(href){
     //let status = await page.open(`https://${href}`);    
     //let body = await page.property('content');
     let body = await rp.get(`https:${href}`);
+	body = iconv.decode(Buffer.from(body), 'GBK');
     await sleep(1);
 
 	let reg = new RegExp('\/\/desc.alicdn.com[^"]+', 'ig');
@@ -95,10 +97,17 @@ async function saveDetail(href){
         },
     });
 
-    console.log(priceBody);return;
+    let price1 = '';
+    let price2 = '';
+	priceBody = eval(priceBody.replace('setMdskip', ''));
+	let priceInfo = priceBody.defaultModel.itemPriceResultDO.priceInfo;
+	for(let k in priceInfo){
+		let item = priceInfo[k];
+		price1 = item.price;
+		price2 = item.promotionList[0].price;
+		break;
+	}
 
-    let price1 = $('#J_StrPriceModBox .tm-price').text().trim();
-    let price2 = $('#J_PromoPrice .tm-price').text().trim();
     
     let name = filterName(nameList);
     if(name == ''){
@@ -178,6 +187,7 @@ function filterName(list){
     for(let i = 0; i < size; i++){
         let item = list.eq(i);
         let text = item.text();
+		console.log(text);
         if(text.includes('款号')){
             return text.replace('款号:', '').trim();
         }
