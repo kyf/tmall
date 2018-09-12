@@ -13,8 +13,12 @@ function main(){
         header: '商品名称',
         width: 100,
     },{
-        key: 'price',
+        key: 'price1',
         header: '吊牌价',
+        width: 10,
+    },{
+        key: 'price2',
+        header: '天猫价',
         width: 10,
     }];
 

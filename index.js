@@ -57,17 +57,17 @@ let g_index = 0;
 
 let g_data = [];
 
-let cookie = 'cna=jL63Er/uSEwCAXLxRThk/POO; cq=ccp%3D1; hng=CN%7Czh-CN%7CCNY%7C156; t=a732eeab9f4edbb1018ce8f41d7f0d36; tracknick=kyf1231; _tb_token_=ee8bee5e7db73; cookie2=13fbd8e666b69bd6d2    9d4e092bb29099; _m_h5_tk=a9311c8b9c8bcde033958d394896d3ef_1536668791887; _m_h5_tk_enc=f16587f999259d5eb3e18a446dcd0732; pnm_cku822=098%23E1hvEQvUvbpvUvCkvvvvvjiPPsdO0j3UPszpzjEUPmP9zjlRRszytjE8P2Fplj1HiQhvCv    vvpZpPvpvhvv2MMQhCvvOv9hCvvvvEvpCW9CfytC0DW3vOHkx%2F1RoK5d8rwZHl%2Bb8reEIaUWoQ%2Bu0OeB69zbmAdX9fjomUkC4AdX3gENLvHdoJVcaVzbvqrqpAOH2lYBpTHdaScOyCvvOCvhE20RoivpvUvvCCEmWHClAtvpvIvvCvpvvvvvvvvh8DvvmCtvvvBGwvvvU    wvvCj1Qvvv99vvhNjvvvmm2yCvvpvvhCv; isg=BL-_Soqs2GGDU928uNo2RPlQTpOJDBN17OYo5FGMB269YN_iWXVUl9FypnA7OOu-';
+let cookie = 'cna=jL63Er/uSEwCAXLxRThk/POO; cq=ccp%3D1; t=e9278892b37b5468131a8274735b2c66; _tb_token_=e33745eba75b3; cookie2=1cde488023d5a741a8486b267c05b396; pnm_cku822=098%23E1hvW9vUvbpvUvCkvvvvvjiPPsdw1jnCPLchtjthPmPwQj3WRFq9tjimn2FO6jlPRphvCvvvphvPvpvhvv2MMTyCvv9vvhhybATLcIyCvvOCvhE20RotvpvIvvCvpvvvvvvvvhNjvvmCtvvvBGwvvvUwvvCj1Qvvv99vvhNjvvvmmvyCvhAvJoWFjXhpVE01Ux8x9E%2BaRfU6pwethb8reC69D764d34AVArlYE97rEtsBGsZHFKzrmphQRA1%2BbeAOHFIAfUTKFyK2ixreuTxD7QHvphvC9mvphvvv8wCvvpvvhHh; _m_h5_tk=3f2c4a4e824911fdb34262c1335c305f_1536726500863; _m_h5_tk_enc=4d87361565f5ec6a29c90adb4422c6bc; isg=BElJox8HdmBitAvaoghIOoMiWHVjPj37WwHmouu-wTBvMmlEMubzmRhgcNYhatUA'; 
 
 
 async function saveDetail(href){
 	g_index++;
-	if(g_index != 1)return;
+	if(g_index < 33)return;
     //let page = await initPage();
     //let status = await page.open(`https://${href}`);    
     //let body = await page.property('content');
-    let body = await rp.get(`https:${href}`);
-	body = iconv.decode(Buffer.from(body), 'GBK');
+    let body = await rp({uri:`https:${href}`, method: 'get', encoding: null});
+	body = iconv.decode(body, 'GBK');
     await sleep(1);
 
 	let reg = new RegExp('\/\/desc.alicdn.com[^"]+', 'ig');
@@ -79,7 +79,6 @@ async function saveDetail(href){
     let nameList = $('#J_AttrUL li');
 
     //let price = filterPrice(nameList);
-    
     let reg1 = new RegExp('//mdskip.taobao.com/core/initItemDetail.htm[^"]+', 'ig');
     let priceuri = body.match(reg1);
     if(priceuri == null){
@@ -89,6 +88,7 @@ async function saveDetail(href){
     let newPriceUri = getPriceUri(cookie, priceuri[1]);
     let priceBody = await rp({
         method: 'get',
+        encoding: null,
         uri: 'https:' + newPriceUri,
         headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.81 Safari/537.36",
@@ -97,9 +97,19 @@ async function saveDetail(href){
         },
     });
 
+    priceBody = iconv.decode(priceBody, 'GBK');
     let price1 = '';
     let price2 = '';
 	priceBody = eval(priceBody.replace('setMdskip', ''));
+    if(!priceBody.defaultModel){
+        let date = new Date();
+        console.log(date.toISOString() + '请求失败 ...');
+        process.exit(0);
+//        g_index--;
+//        await sleep(30);
+//        saveDetail(href);
+        return;
+    }
 	let priceInfo = priceBody.defaultModel.itemPriceResultDO.priceInfo;
 	for(let k in priceInfo){
 		let item = priceInfo[k];
@@ -118,7 +128,8 @@ async function saveDetail(href){
     let item = {"number": name, "name": title, "price1": price1, "price2": price2};
     fs.writeFileSync(`./kk/${name}.json`, JSON.stringify(item));
     
-	console.log(`[${g_index}] ${JSON.stringify(item)} ${href}...`);
+    let date = new Date();
+	console.log(`${date.toISOString()}[${g_index}] ${JSON.stringify(item)} ${href}...`);
     //return;
 
     fs.existsSync(`./data/${name}`) || fs.mkdirSync(`./data/${name}`);
@@ -187,7 +198,6 @@ function filterName(list){
     for(let i = 0; i < size; i++){
         let item = list.eq(i);
         let text = item.text();
-		console.log(text);
         if(text.includes('款号')){
             return text.replace('款号:', '').trim();
         }
